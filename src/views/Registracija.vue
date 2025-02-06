@@ -66,10 +66,10 @@ export default {
       console.log("Pokušaj registracije:", this.form);
       
       //salje post zahtjev na fast api da se moze registrirat novi korisnik
-      const response = await fetch("http://127.0.0.1:8000/users/register", { #ovaj link je fast api endpoint za registraciju korisnika
+      const response = await fetch("http://127.0.0.1:8000/users/register", { //ovaj link je fast api endpoint za registraciju korisnika
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        #podaci novog korisnika koji se salju za registraciju
+        //podaci novog korisnika koji se salju za registraciju
         body: JSON.stringify({
           ime: this.form.ime,
           korisnicko_ime: this.form.korisnickoIme,
