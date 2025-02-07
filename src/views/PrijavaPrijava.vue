@@ -52,7 +52,7 @@ export default {
       //zahtjev fastu za login
       const response = await fetch("http://127.0.0.1:8000/users/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${store.token}` },
         body: JSON.stringify({
           email: this.form.email,
           lozinka: this.form.lozinka
@@ -70,8 +70,7 @@ export default {
       console.log("Uspješna prijava:", data);
 
       //spremanje tokena, pohrana emaila da se nav moze promijenit i preusmjeravanje na home
-      localStorage.setItem("token", data.access_token);
-      store.currentUser = this.form.email; 
+      store.login(this.form.email, data.access_token);  //zbog reloada i logina
       this.$router.replace({ name: "ArtGallery" });
     } catch (error) {
       console.error("Doslo je do pogreske prilikom prijave:", error.message);

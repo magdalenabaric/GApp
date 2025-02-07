@@ -86,8 +86,8 @@ def get_exhibition(exhibition_id: str):
             Key={"exhibition_id": exhibition_id})
         if "Item" not in response:
             raise HTTPException(
-                status_code=404, detail="Izložba nije pronađena u bazi.")
+                status_code=404, detail="Izložba nije pronađena")
         return response["Item"]
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Došlo je do pogreške pri dohvaćanju izložbe: {str(e)}")
+            status_code=500, detail=f"Pogreška pri dohvaćanju izložbe: {str(e)}")

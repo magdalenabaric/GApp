@@ -68,7 +68,8 @@ export default {
       //salje post zahtjev na fast api da se moze registrirat novi korisnik
       const response = await fetch("http://127.0.0.1:8000/users/register", { //ovaj link je fast api endpoint za registraciju korisnika
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json",
+        "Authorization": `Bearer ${store.token}` },   //zbog reloada i logina dodano da se salje i token
         //podaci novog korisnika koji se salju za registraciju
         body: JSON.stringify({
           ime: this.form.ime,

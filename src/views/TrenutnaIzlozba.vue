@@ -25,61 +25,95 @@
   </template>
   
   <script>
-  import { db } from '@/firebase';
-  import { doc, getDoc, collection, getDocs, addDoc } from 'firebase/firestore';
-  import store from '@/store';
-  
+  import { API_URL } from "@/config";
+  import store from "@/store";
+
   export default {
     data() {
       return {
         exhibit: {},
         exhibitImages: [],
         newComments: {},
-        currentUser: null,
+        currentUser: store.currentUser,
         selectedImage: null
       };
     },
     async created() {
       const exhibitId = this.$route.params.id;
       await this.fetchExhibit(exhibitId);
-      this.currentUser = store.currentUser;
     },
     methods: {
-      async fetchExhibit(exhibitId) {
-        const exhibitDoc = await getDoc(doc(db, 'exhibits', exhibitId));
-        if (exhibitDoc.exists()) {
-          this.exhibit = exhibitDoc.data();
-          this.exhibitImages = this.exhibit.images;
+      async fetchExhibit(exhibitId) { //metoda za dohvacanje izlozbi da ih mozemo prikazat
+        try {
+          const response = await fetch(`${API_URL}/exhibits/${exhibitId}`); //api zahtjev za dohvacanje izlozbi
+          if (!response.ok) { //ako nisu ispravno dohvaceni podaci baca gresku
+            throw new Error("Greška pri dohvaćanju izložbe");
+          }
+          const data = await response.json(); //parsiranje u json da se podaci mogu obradit
+
+          this.exhibit = data;  //postavljanje izlozbi u varijablu exhibit
+          this.exhibitImages = data.images || []; //postavljanje slika u varijablu, ako postoje a ako ne postavlja varijablu na prazan niz
+
+          // Dohvati komentare za svaku sliku
           for (let image of this.exhibitImages) {
             image.comments = await this.fetchComments(image.name);
           }
-        } else {
-          console.error('No such document!');
+        } catch (error) {
+          console.error("Greška:", error);
         }
       },
-      async fetchComments(imageName) {
-        const comments = [];
-        const commentsSnapshot = await getDocs(collection(db, 'comments', imageName, 'imageComments'));
-        commentsSnapshot.forEach(doc => {
-          comments.push({ id: doc.id, ...doc.data() });
-        });
-        return comments;
+      async fetchComments(imageName) {  //metoda za dohvacanje komentara za neku sliku
+        try {
+          const response = await fetch(`${API_URL}/comments/?imageName=${imageName}`);
+          if (!response.ok) {
+            throw new Error("Pogreška pri dohvaćanju komentara");
+          }
+          const data = await response.json();
+          return data.comments || [];
+        } catch (error) {
+          console.error("Greška:", error);
+          return [];
+        }
       },
-      async addComment(imageName) {
+      async addComment(imageName) {   //metoda za dodavanje novog komentara
         if (!this.currentUser) {
-          alert('Morate biti prijavljeni da biste dodali komentar.');
+          alert("Morate biti prijavljeni da biste dodali komentar.");
           return;
         }
-        const newComment = this.newComments[imageName];
+
+        const newComment = this.newComments[imageName]; //dohvaca sadrzaj komentara
         if (newComment) {
-          await addDoc(collection(db, 'comments', imageName, 'imageComments'), { text: newComment, userId: this.currentUser });
-          this.newComments[imageName] = '';
-          const image = this.exhibitImages.find(img => img.name === imageName);
-          if (image) {
-            image.comments = await this.fetchComments(imageName);
+          try {
+            const response = await fetch(`${API_URL}/comments/`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                image_name: imageName,  
+                text: newComment,
+                user_id: this.currentUser
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error("Pogreška pri dodavanju komentara!");
+            }
+
+            // Očisti input polje nakon unosa
+            this.newComments[imageName] = "";
+
+            // Dodaj novi komentar u lokalni state da se moze prikazat na frontendu
+            const image = this.exhibitImages.find(img => img.name === imageName);
+            if (image) {
+              image.comments.push({ text: newComment, userId: this.currentUser });
+            }
+          } catch (error) {
+            console.error("Greška:", error);
+            alert("Došlo je do pogreške pri dodavanju komentara.");
           }
         }
       },
+
+      //funkcije za otvaranje i zatvaranje modala sa slikama, tj kad pritisnes na sliku ono sto se otvori
       openModal(image) {
         this.selectedImage = image;
       },
@@ -88,12 +122,12 @@
       }
     }
   };
-  </script>
+</script>
   
   <style scoped>
   .exhibit-description {
   font-size: 18px; /* Postavite veličinu slova prema želji */
-}
+  }
   .exhibit {
     color: white;
     padding: 20px;

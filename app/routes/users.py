@@ -97,4 +97,5 @@ def login(user: UserLogin):
     access_token = create_access_token(data={"sub": user.email})
     print(f"Generiran token: {access_token}")
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    # tu sam dodala prosljedivanje user id-a da se moze pohranit nova izlozba povezana sa id-em korisnika
+    return {"access_token": access_token, "token_type": "bearer", "user_id": user_data["user_id"]}
