@@ -1,11 +1,12 @@
 from fastapi import FastAPI
-from app.routes import users
+from app.routes import exhibitions, users
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Art Gallery Backend")
 
 # ruta za usere
 app.include_router(users.router, prefix="/users")
+app.include_router(exhibitions.router, prefix="/exhibits")
 
 
 @app.get("/")

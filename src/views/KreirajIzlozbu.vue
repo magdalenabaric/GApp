@@ -8,7 +8,7 @@
         </div>
         <div class="form-group">
           <label for="exhibit-images">Dodaj slike:</label>
-          <input type="file" multiple="multiple" id="exhibit-images" @change="handleFileUpload" required>
+          <input type="file" multiple id="exhibit-images" @change="handleFileUpload" required>
         </div>
         <croppa
           width="300"
@@ -31,9 +31,7 @@
 </template>
 
 <script>
-import { db, storage } from '@/firebase';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { API_URL } from '@/config';
 import Croppa from 'vue-croppa';
 import 'vue-croppa/dist/vue-croppa.css';
 import store from '@/store'; // Pretpostavljamo da je store pravilno konfiguriran za korisnika
@@ -50,54 +48,58 @@ export default {
     }
   },
   methods: {
-    handleFileUpload(event) {
-      const files = Array.from(event.target.files);
-      this.exhibitImages = files.map((file, index) => ({
-        id: index + 1,
-        url: URL.createObjectURL(file),
-        name: file.name
-      }));
-    },
-    async submitExhibit() {
-      const user = store.currentUser; // Dohvati trenutno prijavljenog korisnika
-
-      // Dodaj izložbu u Firestore
-      const exhibitDoc = await addDoc(collection(db, 'exhibits'), {
-        description: this.exhibitDescription,
-        images: [],
-        user: {
-          email: user,
-          displayName: user  // Koristi displayName ako postoji, inače email
-        }
-      });
-
-      const promises = this.exhibitImages.map(async (image) => {
-        const file = await fetch(image.url).then(r => r.blob());
-        const storageRef = ref(storage, `images/${exhibitDoc.id}/${image.name}`);
-        await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(storageRef);
-
-        return {
-          url: downloadURL,
-          name: image.name
+    handleFileUpload(event) {   //funkcija za upload slika za izlozbu
+      const files = Array.from(event.target.files);   //pretvara slike u polje da se mogu iterirat
+      this.exhibitImages = [];    //resetira se jer se trebaju prikazat samo trenutno ucitane slike
+      files.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.exhibitImages.push({
+            id: index + 1,
+            url: e.target.result, 
+            name: file.name
+          });
         };
+        reader.readAsDataURL(file);
       });
+    },
+    async submitExhibit() {   //izlozbe se salju na backend
+      try {
+        const user = store.currentUser; // Dohvati trenutno prijavljenog korisnika
 
-      const uploadedImages = await Promise.all(promises);
+        if (!user) {
+          alert("Morate biti prijavljeni kako biste kreirali izložbu.");
+          return;
+        }
 
-      // Ažuriraj dokument izložbe sa slikama
-      const exhibitRef = doc(db, 'exhibits', exhibitDoc.id);
-      await updateDoc(exhibitRef, {
-        images: uploadedImages
-      });
+        const exhibitData = {
+          naziv: "Nova Izložba",
+          opis: this.exhibitDescription,
+          user: { displayName: user },
+          images: this.exhibitImages.map(image => ({
+            url: image.url,
+            name: image.name
+          }))
+        };
 
-      // Očisti formu
-      this.exhibitDescription = '';
-      this.exhibitImages = [];
+        const response = await fetch(`${API_URL}/exhibits/create`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(exhibitData)
+        });
 
-      // Preusmjeri na Galerija.vue nakon kreiranja izložbe
-      this.$router.push({ name: 'Galerija' });
-    }
+        if (!response.ok) {
+          throw new Error("Greška pri kreiranju izložbe!");
+        }
+
+        alert("Izložba uspješno kreirana!");
+        this.$router.push({ name: "Galerija" });
+
+      } catch (error) {
+        console.error("Greška:", error);
+        alert("Došlo je do pogreške.");
+       }
+    } 
   }
 };
 </script>

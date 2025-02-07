@@ -8,7 +8,7 @@
       <p>Trenutno nema izložbi.</p>
     </div>
     <div class="image-grid" v-else>
-      <div v-for="exhibit in exhibits" :key="exhibit.id" class="exhibit-card" @click="otvoriIzlozbu(exhibit.id)">
+      <div v-for="exhibit in exhibits" :key="exhibit.exhibition_id" class="exhibit-card" @click="otvoriIzlozbu(exhibit.exhibition_id)">
         <ArtGalleryCard :exhibit="exhibit" />
       </div>
     </div>
@@ -16,10 +16,10 @@
 </template>
 
 <script>
-import { db } from '@/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+
 import ArtGalleryCard from '@/components/ArtGalleryCard.vue';
 import store from '@/store';
+import { API_URL } from "@/config";
 
 export default {
   components: {
@@ -32,7 +32,7 @@ export default {
     }
   },
   created() {
-    this.isGuest = !store.currentUser;
+    this.isGuest = !localStorage.getItem("token");  //provjerava jel korisnik prijavljen
     this.fetchExhibits();
   },
   methods: {
@@ -40,14 +40,20 @@ export default {
       this.$router.push({ name: 'KreirajIzlozbu' });
     },
     async fetchExhibits() {
-      const querySnapshot = await getDocs(collection(db, 'exhibits'));
-      this.exhibits = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      try {
+        const response = await fetch(`${API_URL}/exhibits/`);
+        if (!response.ok) {
+          throw new Error("Došlo je do pogreške pri dohvaćanju izložbi");
+        }
+        const data = await response.json(); //pretvaranje podataka u json format
+        
+        this.exhibits = data.exhibitions;  // Postavi podatke u exhibits array
+      } catch (error) {
+        console.error("Greška:", error);
+      }
     },
     otvoriIzlozbu(exhibitId) {
-      this.$router.push({ name: 'Exhibit', params: { id: exhibitId } });
+      this.$router.push({ name: 'Exhibit', params: { id: exhibitId } });  //kad se pritisne na izlozbu da se otvore detalji
     }
   }
 }
